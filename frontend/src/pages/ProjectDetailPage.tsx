@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -24,15 +24,7 @@ import { useToast } from '../hooks/useToast';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8080';
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      'ot-dropdown': React.HTMLAttributes<HTMLElement>;
-    }
-  }
-}
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
+//Helpers 
 
 function priorityClass(p: string): string {
   return p === 'high' ? 'danger' : p === 'medium' ? 'warning' : 'secondary';
