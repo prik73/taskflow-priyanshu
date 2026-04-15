@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -23,6 +23,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:8080';
+
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'ot-dropdown': React.HTMLAttributes<HTMLElement>;
+    }
+  }
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -415,7 +423,35 @@ export default function ProjectDetailPage() {
               : <p className="page-subtitle muted">No description</p>}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-{isOwner && (
+            {/* Stats dropdown */}
+            {tasks.length > 0 && (
+              <ot-dropdown>
+                <button className="outline small" popoverTarget="stats-menu" aria-expanded="false">
+                  Stats
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginLeft: '0.25rem' }}>
+                    <polyline points="6 9 12 15 18 9"/>
+                  </svg>
+                </button>
+                <menu popover="auto" id="stats-menu" className="stats-dropdown-panel">
+                  {COLUMNS.map(col => {
+                    const count = tasks.filter(t => t.status === col.id).length;
+                    return (
+                      <li key={col.id} role="menuitem" className="stats-dropdown-row" data-status={col.id}>
+                        <span className="stats-dropdown-dot" />
+                        <span className="stats-dropdown-label">{col.label}</span>
+                        <span className="stats-dropdown-count">{count}</span>
+                      </li>
+                    );
+                  })}
+                  <li className="stats-dropdown-divider" role="separator" />
+                  <li role="menuitem" className="stats-dropdown-row stats-dropdown-row--total">
+                    <span className="stats-dropdown-label">Total</span>
+                    <span className="stats-dropdown-count">{tasks.length}</span>
+                  </li>
+                </menu>
+              </ot-dropdown>
+            )}
+            {isOwner && (
               <>
                 <button className="outline small" onClick={() => setShowProjectModal(true)}>Edit</button>
                 <button className="outline small" data-variant="danger" onClick={() => setConfirmDeleteProject(true)}>Delete</button>
@@ -426,25 +462,6 @@ export default function ProjectDetailPage() {
 
         {error && (
           <div role="alert" data-variant="error" style={{ marginBottom: '1rem' }}>{error}</div>
-        )}
-
-        {/* Stats bar */}
-        {tasks.length > 0 && (
-          <div className="stats-bar">
-            {COLUMNS.map(col => {
-              const count = tasks.filter(t => t.status === col.id).length;
-              return (
-                <div key={col.id} className="stats-bar-item" data-status={col.id}>
-                  <span className="stats-bar-count">{count}</span>
-                  <span className="stats-bar-label">{col.label}</span>
-                </div>
-              );
-            })}
-            <div className="stats-bar-item stats-bar-item--total">
-              <span className="stats-bar-count">{tasks.length}</span>
-              <span className="stats-bar-label">Total</span>
-            </div>
-          </div>
         )}
 
         {/* Filter bar */}

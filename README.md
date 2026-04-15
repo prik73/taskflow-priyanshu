@@ -215,8 +215,5 @@ go test ./backend/integration/... -v -count=1
 **Backend**
 - `GET /users/me` so the frontend doesn't have to decode the JWT client-side
 - Full-text task search (`?q=`)
-- Activity history: log every task change (status, assignee, priority) with who made it and when — so the whole team can see what happened and when
-
-**Shortcuts taken**
-- No request-level tracing (only request IDs); a real system would use OpenTelemetry
-- No HTTPS termination in nginx (would add Let's Encrypt in production)
+- Activity history: log every task change (status, assignee, priority) with who made it and when, so the whole team can see what happened and when
+- Image attachments in task descriptions, drag-and-drop image upload stored in S3, rendered inline in the task detail view
