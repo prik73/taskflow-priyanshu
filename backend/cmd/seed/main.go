@@ -40,12 +40,12 @@ func main() {
 	fmt.Fprintln(os.Stdout, "")
 	fmt.Fprintln(os.Stdout, "✅  Seed data inserted successfully")
 	fmt.Fprintln(os.Stdout, "")
-	fmt.Fprintln(os.Stdout, "   Primary test credentials:")
+	fmt.Fprintln(os.Stdout, "   Primary test credentials (Amit ji):")
 	fmt.Fprintln(os.Stdout, "     Email:    test@example.com")
 	fmt.Fprintln(os.Stdout, "     Password: password123")
 	fmt.Fprintln(os.Stdout, "")
-	fmt.Fprintln(os.Stdout, "   Secondary user (for assignee testing):")
-	fmt.Fprintln(os.Stdout, "     Email:    bob@example.com")
+	fmt.Fprintln(os.Stdout, "   Secondary user (Narendra ji, for assignee testing):")
+	fmt.Fprintln(os.Stdout, "     Email:    narendra@example.com")
 	fmt.Fprintln(os.Stdout, "     Password: password123")
 }
 
@@ -56,44 +56,44 @@ func seed(ctx context.Context, pool *pgxpool.Pool) error {
 	}
 	passwordHash := string(hash)
 
-	// ── User 1: Alice (primary test user, project owner) ─────────────────────
-	var aliceID uuid.UUID
+	// ── User 1: Amit ji (primary test user, project owner) ───────────────────
+	var amitID uuid.UUID
 	err = pool.QueryRow(ctx, `
 		INSERT INTO users (name, email, password_hash)
-		VALUES ('Alice (Test User)', 'test@example.com', $1)
+		VALUES ('Amit ji', 'test@example.com', $1)
 		ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, password_hash = EXCLUDED.password_hash
 		RETURNING id
-	`, passwordHash).Scan(&aliceID)
+	`, passwordHash).Scan(&amitID)
 	if err != nil {
-		return fmt.Errorf("upsert alice: %w", err)
+		return fmt.Errorf("upsert amit: %w", err)
 	}
-	fmt.Printf("  👤 Alice: %s\n", aliceID)
+	fmt.Printf("  👤 Amit ji: %s\n", amitID)
 
-	// ── User 2: Bob (for assignee demos) ──────────────────────────────────────
-	var bobID uuid.UUID
+	// ── User 2: Narendra ji (for assignee demos) ──────────────────────────────
+	var narendraID uuid.UUID
 	err = pool.QueryRow(ctx, `
 		INSERT INTO users (name, email, password_hash)
-		VALUES ('Bob (Reviewer)', 'bob@example.com', $1)
+		VALUES ('Narendra ji', 'narendra@example.com', $1)
 		ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, password_hash = EXCLUDED.password_hash
 		RETURNING id
-	`, passwordHash).Scan(&bobID)
+	`, passwordHash).Scan(&narendraID)
 	if err != nil {
-		return fmt.Errorf("upsert bob: %w", err)
+		return fmt.Errorf("upsert narendra: %w", err)
 	}
-	fmt.Printf("  👤 Bob:   %s\n", bobID)
+	fmt.Printf("  👤 Narendra ji: %s\n", narendraID)
 
-	// ── Project owned by Alice ────────────────────────────────────────────────
+	// ── Project owned by Amit ji ─────────────────────────────────────────────
 	var projectID uuid.UUID
 	err = pool.QueryRow(ctx, `
 		INSERT INTO projects (name, description, owner_id)
 		VALUES ('Website Redesign', 'Q2 redesign — homepage, navigation, and testing', $1)
 		ON CONFLICT DO NOTHING
 		RETURNING id
-	`, aliceID).Scan(&projectID)
+	`, amitID).Scan(&projectID)
 	if err != nil || projectID == uuid.Nil {
 		if scanErr := pool.QueryRow(ctx,
 			`SELECT id FROM projects WHERE owner_id = $1 ORDER BY created_at LIMIT 1`,
-			aliceID,
+			amitID,
 		).Scan(&projectID); scanErr != nil {
 			return fmt.Errorf("fetch seed project: %w", scanErr)
 		}
@@ -112,30 +112,30 @@ func seed(ctx context.Context, pool *pgxpool.Pool) error {
 
 	due := "2026-05-15"
 	tasks := []taskDef{
-		// todo — high priority, assigned to Bob, due soon
+		// todo — high priority, assigned to Narendra ji, due soon
 		{
 			title:      "Design homepage mockup",
 			status:     "todo",
 			priority:   "high",
-			assigneeID: &bobID,
-			creatorID:  aliceID,
+			assigneeID: &narendraID,
+			creatorID:  amitID,
 			dueDate:    &due,
 		},
-		// in_progress — medium, Alice working on it
+		// in_progress — medium, Amit ji working on it
 		{
 			title:      "Implement navigation bar",
 			status:     "in_progress",
 			priority:   "medium",
-			assigneeID: &aliceID,
-			creatorID:  aliceID,
+			assigneeID: &amitID,
+			creatorID:  amitID,
 		},
-		// done — low priority, created by Bob
+		// resolved — low priority, created by Narendra ji
 		{
 			title:      "Write unit tests",
 			status:     "resolved",
 			priority:   "low",
 			assigneeID: nil,
-			creatorID:  bobID,
+			creatorID:  narendraID,
 		},
 	}
 

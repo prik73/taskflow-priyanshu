@@ -38,9 +38,6 @@ The spec says "list projects the user owns or has tasks in." In practice this cr
 **`need_review` and `resolved` instead of `done`**
 Extended the spec's `todo | in_progress | done` to `todo | in_progress | need_review | resolved` to reflect a real review workflow — a task under review is meaningfully different from one that is signed off. This is an intentional product improvement.
 
-**No ORM**
-Raw parameterised SQL gives full control over query plans and avoids N+1 surprises. Every query is explicit and reviewable.
-
 ---
 
 ## 3. Running Locally
@@ -49,8 +46,8 @@ Raw parameterised SQL gives full control over query plans and avoids N+1 surpris
 
 ```bash
 # 1. Clone
-git clone https://github.com/your-name/taskflow
-cd taskflow
+git clone https://github.com/prik73/taskflow-priyanshu
+cd taskflow-priyanshu
 
 # 2. Configure environment
 cp .env.example .env
@@ -94,10 +91,10 @@ migrate \
 
 | User | Email | Password |
 |---|---|---|
-| Alice (project owner) | `test@example.com` | `password123` |
-| Bob (teammate) | `bob@example.com` | `password123` |
+| Amit ji (project owner) | `test@example.com` | `password123` |
+| Narendra ji (teammate) | `narendra@example.com` | `password123` |
 
-Alice owns a **Website Redesign** project with three tasks in different statuses. Log in as Bob to see he's assigned to one of them.
+Amit ji owns a **Website Redesign** project with three tasks in different statuses. Log in as Narendra ji to see he's assigned to one of them.
 
 ---
 
@@ -182,6 +179,7 @@ go test ./backend/integration/... -v -count=1
 **Backend**
 - `GET /users/me` so the frontend doesn't have to decode the JWT client-side
 - Full-text task search (`?q=`)
+- Activity history: log every task change (status, assignee, priority) with who made it and when — so the whole team can see what happened and when
 
 **Shortcuts taken**
 - No request-level tracing (only request IDs); a real system would use OpenTelemetry
