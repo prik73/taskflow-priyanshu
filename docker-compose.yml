@@ -1,0 +1,87 @@
+# TaskFlow — docker-compose.yml
+# Usage:
+#   cp .env.example .env   (edit values if desired)
+#   docker compose up
+#
+# Services:
+#   postgres  — PostgreSQL 16
+#   api       — Go REST API (runs migrations on start, then serves on :8080)
+#   seed      — one-shot seeder (exits after inserting demo data)
+#   frontend  — React/Vite SPA served via nginx on :3000
+
+services:
+  # ── Database ────────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER:     ${DB_USER:-taskflow}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-taskflow_password}
+      POSTGRES_DB:       ${DB_NAME:-taskflow}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT_EXPOSE:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-taskflow} -d ${DB_NAME:-taskflow}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  # ── API Server ───────────────────────────────────────────────────────────────
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PORT:         ${PORT:-8080}
+      ENV:          ${ENV:-production}
+      JWT_SECRET:   ${JWT_SECRET}
+      DB_HOST:      postgres
+      DB_PORT:      5432
+      DB_USER:      ${DB_USER:-taskflow}
+      DB_PASSWORD:  ${DB_PASSWORD:-taskflow_password}
+      DB_NAME:      ${DB_NAME:-taskflow}
+      DB_SSLMODE:   ${DB_SSLMODE:-disable}
+    ports:
+      - "${PORT:-8080}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  # ── Seed (runs once, exits) ──────────────────────────────────────────────────
+  seed:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    entrypoint: ["/seed"]
+    environment:
+      JWT_SECRET:   ${JWT_SECRET}
+      DB_HOST:      postgres
+      DB_PORT:      5432
+      DB_USER:      ${DB_USER:-taskflow}
+      DB_PASSWORD:  ${DB_PASSWORD:-taskflow_password}
+      DB_NAME:      ${DB_NAME:-taskflow}
+      DB_SSLMODE:   ${DB_SSLMODE:-disable}
+    depends_on:
+      api:
+        condition: service_started
+    restart: "no"
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-3000}:80"
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:

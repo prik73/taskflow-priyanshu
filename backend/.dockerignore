@@ -1,0 +1,6 @@
+# Don't copy these into the Docker build context
+.git
+.gitignore
+*.md
+**/*_test.go
+tmp/
