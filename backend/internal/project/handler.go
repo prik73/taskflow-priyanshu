@@ -27,13 +27,16 @@ func NewHandler(service *Service, taskRepo *task.Repository, logger *zap.Logger)
 	return &Handler{service: service, taskRepo: taskRepo, logger: logger}
 }
 
-// List godoc  GET /projects
+// List godoc  GET /projects?page=1&limit=20&search=foo
 func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 	page, limit := parsePagination(r)
+	search := strings.TrimSpace(r.URL.Query().Get("search"))
 
-	projects, total, err := h.service.ListAll(r.Context(), page, limit)
+	projects, total, err := h.service.ListAll(r.Context(), page, limit, search)
 	if err != nil {
-		h.logger.Error("list projects", zap.Error(err))
+		h.logger.Error("list projects", zap.Error(err),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}
@@ -46,6 +49,30 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 		"limit":    limit,
 		"total":    total,
 	})
+}
+
+// CheckName godoc  GET /projects/check-name?name=foo&exclude_id=uuid
+func (h *Handler) CheckName(w http.ResponseWriter, r *http.Request) {
+	name := strings.TrimSpace(r.URL.Query().Get("name"))
+	if name == "" {
+		response.JSON(w, http.StatusOK, map[string]any{"available": true})
+		return
+	}
+	excludeID := uuid.Nil
+	if raw := r.URL.Query().Get("exclude_id"); raw != "" {
+		if id, err := uuid.Parse(raw); err == nil {
+			excludeID = id
+		}
+	}
+	exists, err := h.service.CheckNameExists(r.Context(), name, excludeID)
+	if err != nil {
+		h.logger.Error("check project name", zap.Error(err),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
+		response.InternalError(w)
+		return
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"available": !exists})
 }
 
 // Create godoc  POST /projects
@@ -78,7 +105,10 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 
 	p, err := h.service.Create(r.Context(), name, req.Description, claims.UserID)
 	if err != nil {
-		h.logger.Error("create project", zap.Error(err))
+		h.logger.Error("create project", zap.Error(err),
+			zap.String("user_id", claims.UserID.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}
@@ -99,14 +129,20 @@ func (h *Handler) Get(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w)
 			return
 		}
-		h.logger.Error("get project", zap.Error(err))
+		h.logger.Error("get project", zap.Error(err),
+			zap.String("project_id", id.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}
 
 	tasks, err := h.taskRepo.ListByProject(r.Context(), id)
 	if err != nil {
-		h.logger.Error("get project tasks", zap.Error(err))
+		h.logger.Error("get project tasks", zap.Error(err),
+			zap.String("project_id", id.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}
@@ -141,7 +177,10 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w)
 			return
 		}
-		h.logger.Error("get project for update", zap.Error(err))
+		h.logger.Error("get project for update", zap.Error(err),
+			zap.String("project_id", id.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}
@@ -191,7 +230,11 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 			response.Forbidden(w)
 			return
 		}
-		h.logger.Error("update project", zap.Error(err))
+		h.logger.Error("update project", zap.Error(err),
+			zap.String("project_id", id.String()),
+			zap.String("user_id", claims.UserID.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}
@@ -216,7 +259,11 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 			response.Forbidden(w)
 			return
 		}
-		h.logger.Error("delete project", zap.Error(err))
+		h.logger.Error("delete project", zap.Error(err),
+			zap.String("project_id", id.String()),
+			zap.String("user_id", claims.UserID.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}
@@ -237,7 +284,10 @@ func (h *Handler) Stats(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w)
 			return
 		}
-		h.logger.Error("get project stats", zap.Error(err))
+		h.logger.Error("get project stats", zap.Error(err),
+			zap.String("project_id", id.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}

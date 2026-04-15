@@ -31,9 +31,10 @@ func scanProject(row pgx.Row) (*Project, error) {
 	return p, nil
 }
 
-// ListAll returns all projects visible to any authenticated user, ordered newest first.
-func (r *Repository) ListAll(ctx context.Context, page, limit int) ([]*Project, int64, error) {
+// ListAll returns paginated projects, optionally filtered by name, ordered newest first.
+func (r *Repository) ListAll(ctx context.Context, page, limit int, search string) ([]*Project, int64, error) {
 	offset := (page - 1) * limit
+	pattern := "%" + search + "%"
 
 	type countResult struct {
 		total int64
@@ -42,13 +43,13 @@ func (r *Repository) ListAll(ctx context.Context, page, limit int) ([]*Project, 
 	countCh := make(chan countResult, 1)
 	go func() {
 		var total int64
-		err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM projects`).Scan(&total)
+		err := r.db.QueryRow(ctx, `SELECT COUNT(*) FROM projects WHERE name ILIKE $1`, pattern).Scan(&total)
 		countCh <- countResult{total, err}
 	}()
 
 	rows, err := r.db.Query(ctx,
-		`SELECT `+projectSelectCols+` FROM projects ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
-		limit, offset,
+		`SELECT `+projectSelectCols+` FROM projects WHERE name ILIKE $1 ORDER BY created_at DESC LIMIT $2 OFFSET $3`,
+		pattern, limit, offset,
 	)
 	if err != nil {
 		return nil, 0, err
@@ -73,6 +74,17 @@ func (r *Repository) ListAll(ctx context.Context, page, limit int) ([]*Project, 
 	}
 
 	return out, cr.total, nil
+}
+
+// ExistsByName returns true if a project with the given name exists (case-insensitive),
+// excluding the project with excludeID (pass uuid.Nil when creating).
+func (r *Repository) ExistsByName(ctx context.Context, name string, excludeID uuid.UUID) (bool, error) {
+	var exists bool
+	err := r.db.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM projects WHERE LOWER(name) = LOWER($1) AND id != $2)`,
+		name, excludeID,
+	).Scan(&exists)
+	return exists, err
 }
 
 // Create inserts a new project owned by ownerID.

@@ -35,7 +35,7 @@ export default function TaskModal({ projectId, task, onClose, onSaved }: Props) 
   const [status, setStatus] = useState<string>(task?.status ?? 'todo');
   const [priority, setPriority] = useState<string>(task?.priority ?? 'medium');
   const [assignee, setAssignee] = useState<string>(task?.assignee_id ?? '');
-  const [dueDate, setDueDate] = useState<string>(task?.due_date ?? '');
+  const [dueDate, setDueDate] = useState<string>(task?.due_date ? task.due_date.slice(0, 10) : '');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -94,7 +94,7 @@ export default function TaskModal({ projectId, task, onClose, onSaved }: Props) 
   }
 
   return (
-    <dialog ref={dialogRef} onCancel={handleClose}>
+    <dialog ref={dialogRef} onCancel={handleClose} className="task-dialog">
       <form onSubmit={handleSubmit}>
         <header>
           <h2>{isEdit ? 'Edit Task' : 'New Task'}</h2>
@@ -220,6 +220,7 @@ export default function TaskModal({ projectId, task, onClose, onSaved }: Props) 
           </button>
         </footer>
       </form>
+
     </dialog>
   );
 }

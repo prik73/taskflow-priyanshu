@@ -15,15 +15,16 @@ var (
 
 // Service contains task business logic, including cross-entity authorization.
 type Service struct {
-	taskRepo   *Repository
-	getOwnerID func(ctx context.Context, projectID uuid.UUID) (uuid.UUID, error)
+	taskRepo    *Repository
+	historyRepo *HistoryRepository
+	getOwnerID  func(ctx context.Context, projectID uuid.UUID) (uuid.UUID, error)
 }
 
 // NewService constructs the task service.
 // getOwnerID is a closure that accepts a project ID and returns its owner UUID — injected from main
 // to avoid a circular import between task ↔ project packages.
-func NewService(taskRepo *Repository, getOwnerID func(ctx context.Context, id uuid.UUID) (uuid.UUID, error)) *Service {
-	return &Service{taskRepo: taskRepo, getOwnerID: getOwnerID}
+func NewService(taskRepo *Repository, historyRepo *HistoryRepository, getOwnerID func(ctx context.Context, id uuid.UUID) (uuid.UUID, error)) *Service {
+	return &Service{taskRepo: taskRepo, historyRepo: historyRepo, getOwnerID: getOwnerID}
 }
 
 // CreateTaskInput is the service-level create request.
@@ -50,7 +51,7 @@ func (s *Service) Create(ctx context.Context, in CreateTaskInput) (*Task, error)
 	if _, err := s.getOwnerID(ctx, in.ProjectID); err != nil {
 		return nil, ErrProjectNotFound
 	}
-	return s.taskRepo.Create(ctx, CreateInput{
+	t, err := s.taskRepo.Create(ctx, CreateInput{
 		Title:       in.Title,
 		Description: in.Description,
 		Priority:    in.Priority,
@@ -59,12 +60,48 @@ func (s *Service) Create(ctx context.Context, in CreateTaskInput) (*Task, error)
 		CreatorID:   in.CreatorID,
 		DueDate:     in.DueDate,
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Record creation history
+	_ = s.historyRepo.Insert(ctx, []HistoryEntry{
+		{TaskID: t.ID, UserID: &in.CreatorID, Field: "created", OldValue: nil, NewValue: nil},
+	})
+
+	return t, nil
 }
 
 // Update applies a partial update — any authenticated user can update tasks they can see.
 // (spec doesn't restrict task updates to specific roles)
-func (s *Service) Update(ctx context.Context, id, _ uuid.UUID, in UpdateInput) (*Task, error) {
-	return s.taskRepo.Update(ctx, id, in)
+func (s *Service) Update(ctx context.Context, id, requesterID uuid.UUID, in UpdateInput) (*Task, error) {
+	// Fetch current state for diff
+	old, err := s.taskRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := s.taskRepo.Update(ctx, id, in)
+	if err != nil {
+		return nil, err
+	}
+
+	// Record field-level changes
+	entries := diffTask(old, t, requesterID)
+	if len(entries) > 0 {
+		_ = s.historyRepo.Insert(ctx, entries)
+	}
+
+	return t, nil
+}
+
+// GetHistory returns the activity history for a task.
+func (s *Service) GetHistory(ctx context.Context, taskID uuid.UUID) ([]*HistoryEntry, error) {
+	return s.historyRepo.ListForTask(ctx, taskID)
+}
+
+func (s *Service) GetProjectHistory(ctx context.Context, projectID uuid.UUID, limit, offset int) ([]*ProjectHistoryEntry, error) {
+	return s.historyRepo.ListForProject(ctx, projectID, limit, offset)
 }
 
 // Delete removes a task — only the project owner or the task creator may delete.
@@ -87,4 +124,78 @@ func (s *Service) Delete(ctx context.Context, id, requesterID uuid.UUID) (uuid.U
 	}
 
 	return t.ProjectID, s.taskRepo.Delete(ctx, id)
+}
+
+// ptrStr safely dereferences a *string, returning "" for nil.
+func ptrStr(s *string) string {
+	if s == nil {
+		return ""
+	}
+	return *s
+}
+
+// strPtr converts a string to *string.
+func strPtr(s string) *string {
+	return &s
+}
+
+// diffTask compares old and new Task states and returns history entries for changed fields.
+func diffTask(old, newT *Task, userID uuid.UUID) []HistoryEntry {
+	var entries []HistoryEntry
+
+	add := func(field string, oldVal, newVal *string) {
+		if ptrStr(oldVal) != ptrStr(newVal) {
+			entries = append(entries, HistoryEntry{
+				TaskID:   newT.ID,
+				UserID:   &userID,
+				Field:    field,
+				OldValue: oldVal,
+				NewValue: newVal,
+			})
+		}
+	}
+
+	// status
+	oldStatus := string(old.Status)
+	newStatus := string(newT.Status)
+	add("status", &oldStatus, &newStatus)
+
+	// priority
+	oldPriority := string(old.Priority)
+	newPriority := string(newT.Priority)
+	add("priority", &oldPriority, &newPriority)
+
+	// assignee_id
+	var oldAssignee, newAssignee *string
+	if old.AssigneeID != nil {
+		s := old.AssigneeID.String()
+		oldAssignee = &s
+	}
+	if newT.AssigneeID != nil {
+		s := newT.AssigneeID.String()
+		newAssignee = &s
+	}
+	add("assignee_id", oldAssignee, newAssignee)
+
+	// title
+	add("title", &old.Title, &newT.Title)
+
+	// description
+	add("description", old.Description, newT.Description)
+
+	// due_date
+	var oldDue, newDue *string
+	if old.DueDate != nil {
+		s := old.DueDate.Format("2006-01-02")
+		oldDue = &s
+	}
+	if newT.DueDate != nil {
+		s := newT.DueDate.Format("2006-01-02")
+		newDue = &s
+	}
+	add("due_date", oldDue, newDue)
+
+	_ = strPtr // used elsewhere if needed
+
+	return entries
 }

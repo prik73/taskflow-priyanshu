@@ -1,4 +1,4 @@
-  import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { listProjects, deleteProject } from '../api/projects';
 import type { Project } from '../types';
@@ -6,6 +6,8 @@ import Navbar from '../components/Navbar';
 import ProjectModal from '../components/ProjectModal';
 import ConfirmModal from '../components/ConfirmModal';
 import { useAuth } from '../contexts/AuthContext';
+
+const PAGE_SIZE = 12;
 
 function CardMenu({ onEdit, onDelete, deleting }: { onEdit: () => void; onDelete: () => void; deleting: boolean }) {
   const [open, setOpen] = useState(false);
@@ -22,12 +24,7 @@ function CardMenu({ onEdit, onDelete, deleting }: { onEdit: () => void; onDelete
 
   return (
     <div ref={ref} className="card-menu">
-      <button
-        className="task-icon-btn"
-        title="More options"
-        aria-expanded={open}
-        onClick={() => setOpen(o => !o)}
-      >
+      <button className="task-icon-btn" title="More options" aria-expanded={open} onClick={() => setOpen(o => !o)}>
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor">
           <circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/>
         </svg>
@@ -64,6 +61,10 @@ function formatDate(iso: string): string {
 export default function ProjectsPage() {
   const { user } = useAuth();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [total, setTotal] = useState(0);
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [showModal, setShowModal] = useState(false);
@@ -71,20 +72,30 @@ export default function ProjectsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Project | null>(null);
 
-  async function fetchProjects() {
+  // Debounce search input
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const fetchProjects = useCallback(async () => {
     setLoading(true);
     setError('');
     try {
-      const data = await listProjects();
+      const data = await listProjects(page, PAGE_SIZE, debouncedSearch);
       setProjects(data.projects ?? []);
-    } catch (err) {
+      setTotal(data.total);
+    } catch {
       setError('Failed to load projects. Please try again.');
     } finally {
       setLoading(false);
     }
-  }
+  }, [page, debouncedSearch]);
 
-  useEffect(() => { void fetchProjects(); }, []);
+  useEffect(() => { void fetchProjects(); }, [fetchProjects]);
 
   function handleSaved(project: Project) {
     setProjects(prev => {
@@ -105,6 +116,7 @@ export default function ProjectsPage() {
     try {
       await deleteProject(project.id);
       setProjects(prev => prev.filter(p => p.id !== project.id));
+      setTotal(t => t - 1);
     } catch {
       setError('Failed to delete project. Please try again.');
     } finally {
@@ -112,6 +124,8 @@ export default function ProjectsPage() {
       setConfirmDelete(null);
     }
   }
+
+  const totalPages = Math.ceil(total / PAGE_SIZE);
 
   return (
     <>
@@ -121,12 +135,33 @@ export default function ProjectsPage() {
           <div>
             <h1 className="page-title">Projects</h1>
             <p className="page-subtitle">
-              {loading ? '' : `${projects.length} project${projects.length !== 1 ? 's' : ''}`}
+              {loading ? '' : `${total} project${total !== 1 ? 's' : ''}`}
             </p>
           </div>
           <button onClick={() => { setEditProject(null); setShowModal(true); }}>
             + New Project
           </button>
+        </div>
+
+        {/* Search bar */}
+        <div className="projects-search-bar">
+          <svg className="projects-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="search"
+            placeholder="Search projects…"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            className="projects-search-input"
+          />
+          {search && (
+            <button className="projects-search-clear" onClick={() => setSearch('')} aria-label="Clear search">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          )}
         </div>
 
         {error && (
@@ -140,47 +175,72 @@ export default function ProjectsPage() {
           <div className="spinner-center" aria-busy="true" data-spinner="large" />
         ) : projects.length === 0 ? (
           <div className="empty-state">
-            <p className="empty-state-title">No projects yet</p>
-            <p className="empty-state-body">
-              Create your first project to start tracking tasks.
-            </p>
-            <button onClick={() => { setEditProject(null); setShowModal(true); }}>
-              + New Project
-            </button>
+            {debouncedSearch ? (
+              <>
+                <p className="empty-state-title">No projects found</p>
+                <p className="empty-state-body">No projects match "{debouncedSearch}".</p>
+                <button className="outline" onClick={() => setSearch('')}>Clear search</button>
+              </>
+            ) : (
+              <>
+                <p className="empty-state-title">No projects yet</p>
+                <p className="empty-state-body">Create your first project to start tracking tasks.</p>
+                <button onClick={() => { setEditProject(null); setShowModal(true); }}>+ New Project</button>
+              </>
+            )}
           </div>
         ) : (
-          <div className="projects-grid">
-            {projects.map(project => (
-              <article key={project.id} className="card project-card">
-                <div className="project-card-header">
-                  <Link to={`/projects/${project.id}`} className="project-card-name">
-                    {project.name}
-                  </Link>
-                  {project.owner_id === user?.id && (
-                    <CardMenu
-                      onEdit={() => { setEditProject(project); setShowModal(true); }}
-                      onDelete={() => setConfirmDelete(project)}
-                      deleting={deletingId === project.id}
-                    />
+          <>
+            <div className="projects-grid">
+              {projects.map(project => (
+                <article key={project.id} className="card project-card">
+                  <div className="project-card-header">
+                    <Link to={`/projects/${project.id}`} className="project-card-name">
+                      {project.name}
+                    </Link>
+                    {project.owner_id === user?.id && (
+                      <CardMenu
+                        onEdit={() => { setEditProject(project); setShowModal(true); }}
+                        onDelete={() => setConfirmDelete(project)}
+                        deleting={deletingId === project.id}
+                      />
+                    )}
+                  </div>
+                  {project.description ? (
+                    <p className="project-card-desc">{project.description}</p>
+                  ) : (
+                    <p className="project-card-desc muted">No description</p>
                   )}
-                </div>
+                  <p className="project-card-meta">Created {formatDate(project.created_at)}</p>
+                  <Link to={`/projects/${project.id}`} className="button outline small project-card-link">
+                    View tasks
+                  </Link>
+                </article>
+              ))}
+            </div>
 
-                {project.description ? (
-                  <p className="project-card-desc">{project.description}</p>
-                ) : (
-                  <p className="project-card-desc muted">No description</p>
-                )}
-
-                <p className="project-card-meta">
-                  Created {formatDate(project.created_at)}
-                </p>
-
-                <Link to={`/projects/${project.id}`} className="button outline small project-card-link">
-                  View tasks
-                </Link>
-              </article>
-            ))}
-          </div>
+            {totalPages > 1 && (
+              <div className="pagination">
+                <button
+                  className="outline small"
+                  disabled={page <= 1}
+                  onClick={() => setPage(p => p - 1)}
+                >
+                  ← Prev
+                </button>
+                <span className="pagination-info">
+                  Page {page} of {totalPages}
+                </span>
+                <button
+                  className="outline small"
+                  disabled={page >= totalPages}
+                  onClick={() => setPage(p => p + 1)}
+                >
+                  Next →
+                </button>
+              </div>
+            )}
+          </>
         )}
       </main>
 

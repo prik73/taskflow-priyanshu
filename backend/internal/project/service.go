@@ -18,8 +18,12 @@ func NewService(repo *Repository) *Service {
 	return &Service{repo: repo}
 }
 
-func (s *Service) ListAll(ctx context.Context, page, limit int) ([]*Project, int64, error) {
-	return s.repo.ListAll(ctx, page, limit)
+func (s *Service) ListAll(ctx context.Context, page, limit int, search string) ([]*Project, int64, error) {
+	return s.repo.ListAll(ctx, page, limit, search)
+}
+
+func (s *Service) CheckNameExists(ctx context.Context, name string, excludeID uuid.UUID) (bool, error) {
+	return s.repo.ExistsByName(ctx, name, excludeID)
 }
 
 func (s *Service) Create(ctx context.Context, name string, description *string, ownerID uuid.UUID) (*Project, error) {

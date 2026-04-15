@@ -1,5 +1,5 @@
 import { apiFetch } from './client';
-import type { PaginatedTasks, Task, User } from '../types';
+import type { HistoryEntry, PaginatedTasks, Task, User } from '../types';
 
 export function getUsers(): Promise<{ users: User[] }> {
   return apiFetch<{ users: User[] }>('/users');
@@ -56,4 +56,20 @@ export function updateTask(id: string, input: UpdateTaskInput): Promise<Task> {
 
 export function deleteTask(id: string): Promise<void> {
   return apiFetch<void>(`/tasks/${id}`, { method: 'DELETE' });
+}
+
+export function getTaskHistory(taskId: string): Promise<{ history: HistoryEntry[] }> {
+  return apiFetch<{ history: HistoryEntry[] }>(`/tasks/${taskId}/history`);
+}
+
+export interface ProjectHistoryEntry extends HistoryEntry {
+  task_title: string;
+}
+
+export function getProjectHistory(
+  projectId: string,
+  limit = 15,
+  offset = 0,
+): Promise<{ history: ProjectHistoryEntry[]; has_more: boolean }> {
+  return apiFetch(`/projects/${projectId}/history?limit=${limit}&offset=${offset}`);
 }

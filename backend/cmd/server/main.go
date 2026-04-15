@@ -70,13 +70,14 @@ func main() {
 	userRepo    := user.NewRepository(pool)
 	tokenRepo   := auth.NewTokenRepository(pool)
 	projectRepo := project.NewRepository(pool)
-	taskRepo    := task.NewRepository(pool)
+	taskRepo        := task.NewRepository(pool)
+	taskHistoryRepo := task.NewHistoryRepository(pool)
 
 	// Services
 	authService    := auth.NewService(userRepo, tokenRepo, cfg.JWTSecret)
 	projectService := project.NewService(projectRepo)
 	// Inject project owner lookup as a closure to break the import cycle
-	taskService := task.NewService(taskRepo, projectRepo.GetOwnerID)
+	taskService := task.NewService(taskRepo, taskHistoryRepo, projectRepo.GetOwnerID)
 
 	// SSE broker — shared between task handler (publishes) and SSE route (subscribes)
 	broker := sse.NewBroker()
@@ -129,10 +130,12 @@ func main() {
 		r.Route("/projects", func(r chi.Router) {
 			r.Get("/", projectHandler.List)
 			r.Post("/", projectHandler.Create)
+			r.Get("/check-name", projectHandler.CheckName)
 			r.Get("/{id}", projectHandler.Get)
 			r.Patch("/{id}", projectHandler.Update)
 			r.Delete("/{id}", projectHandler.Delete)
 			r.Get("/{id}/stats", projectHandler.Stats)
+			r.Get("/{id}/history", taskHandler.ProjectHistory)
 
 			// Tasks nested under project
 			r.Get("/{id}/tasks", taskHandler.List)
@@ -153,6 +156,7 @@ func main() {
 		r.Route("/tasks", func(r chi.Router) {
 			r.Patch("/{id}", taskHandler.Update)
 			r.Delete("/{id}", taskHandler.Delete)
+			r.Get("/{id}/history", taskHandler.History)
 		})
 
 		// Users — for assignee picker

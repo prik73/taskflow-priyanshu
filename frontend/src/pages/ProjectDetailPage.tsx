@@ -12,6 +12,7 @@ import TaskModal from '../components/TaskModal';
 import ProjectModal from '../components/ProjectModal';
 import ConfirmModal from '../components/ConfirmModal';
 import StatsDropdown from '../components/StatsDropdown';
+import ActivityModal from '../components/ActivityModal';
 import KanbanBoard from '../components/kanban/KanbanBoard';
 import { useAuth } from '../contexts/AuthContext';
 import { useToast } from '../hooks/useToast';
@@ -35,6 +36,7 @@ export default function ProjectDetailPage() {
   const [showProjectModal, setShowProjectModal] = useState(false);
   const [confirmDeleteTask, setConfirmDeleteTask] = useState<Task | null>(null);
   const [confirmDeleteProject, setConfirmDeleteProject] = useState(false);
+  const [showActivity, setShowActivity] = useState(false);
 
   const isOwner = project?.owner_id === user?.id;
 
@@ -180,6 +182,7 @@ export default function ProjectDetailPage() {
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
             <StatsDropdown tasks={tasks} />
+            <button className="outline small" onClick={() => setShowActivity(true)}>Activity</button>
             {isOwner && (
               <>
                 <button className="outline small" onClick={() => setShowProjectModal(true)}>Edit</button>
@@ -230,6 +233,10 @@ export default function ProjectDetailPage() {
         />
 
       </main>
+
+      {showActivity && id && (
+        <ActivityModal projectId={id} onClose={() => setShowActivity(false)} />
+      )}
 
       {showTaskModal && id && (
         <TaskModal

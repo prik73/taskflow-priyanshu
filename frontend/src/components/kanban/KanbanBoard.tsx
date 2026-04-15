@@ -25,6 +25,7 @@ export default function KanbanBoard({ tasks, currentUserId, isOwner, usersMap, a
 
   return (
     <DndContext sensors={sensors} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+      <div className="kanban-scroll-wrapper">
       <div className="kanban-board">
         {COLUMNS.map(col => (
           <KanbanColumn
@@ -40,6 +41,7 @@ export default function KanbanBoard({ tasks, currentUserId, isOwner, usersMap, a
             onDelete={onDelete}
           />
         ))}
+      </div>
       </div>
 
       <DragOverlay dropAnimation={null}>

@@ -61,3 +61,14 @@ export interface ProjectStats {
   by_status: { status: string; count: number }[];
   by_assignee: { assignee_id: string; assignee_name: string; count: number }[];
 }
+
+export interface HistoryEntry {
+  id: string;
+  task_id: string;
+  user_id: string | null;
+  user_name: string;
+  field: string;
+  old_value: string | null;
+  new_value: string | null;
+  created_at: string;
+}

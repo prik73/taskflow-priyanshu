@@ -68,7 +68,10 @@ func (h *Handler) List(w http.ResponseWriter, r *http.Request) {
 			response.NotFound(w)
 			return
 		}
-		h.logger.Error("list tasks", zap.Error(err))
+		h.logger.Error("list tasks", zap.Error(err),
+			zap.String("project_id", projectID.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}
@@ -129,7 +132,7 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 	if req.DueDate != nil {
 		d, err := time.Parse("2006-01-02", *req.DueDate)
 		if err != nil {
-			response.ValidationError(w, map[string]string{"due_date": "must be in YYYY-MM-DD format"})
+			response.ValidationError(w, map[string]string{"due_date": "invalid date"})
 			return
 		}
 		dueDate = &d
@@ -153,7 +156,11 @@ func (h *Handler) Create(w http.ResponseWriter, r *http.Request) {
 			response.ValidationError(w, map[string]string{"assignee_id": "user does not exist"})
 			return
 		}
-		h.logger.Error("create task", zap.Error(err))
+		h.logger.Error("create task", zap.Error(err),
+			zap.String("project_id", projectID.String()),
+			zap.String("user_id", claims.UserID.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}
@@ -237,7 +244,7 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 	if req.DueDate != nil {
 		d, err := time.Parse("2006-01-02", *req.DueDate)
 		if err != nil {
-			fields["due_date"] = "must be in YYYY-MM-DD format"
+			fields["due_date"] = "invalid date"
 		} else {
 			in.DueDate = &d
 		}
@@ -257,7 +264,11 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 			response.Forbidden(w)
 			return
 		}
-		h.logger.Error("update task", zap.Error(err))
+		h.logger.Error("update task", zap.Error(err),
+			zap.String("task_id", id.String()),
+			zap.String("user_id", claims.UserID.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}
@@ -267,6 +278,70 @@ func (h *Handler) Update(w http.ResponseWriter, r *http.Request) {
 		Payload:   t,
 	})
 	response.JSON(w, http.StatusOK, t)
+}
+
+// History godoc  GET /tasks/:id/history
+func (h *Handler) History(w http.ResponseWriter, r *http.Request) {
+	taskID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		response.NotFound(w)
+		return
+	}
+
+	entries, err := h.service.GetHistory(r.Context(), taskID)
+	if err != nil {
+		h.logger.Error("get task history", zap.Error(err),
+			zap.String("task_id", taskID.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
+		response.InternalError(w)
+		return
+	}
+	if entries == nil {
+		entries = []*HistoryEntry{}
+	}
+	response.JSON(w, http.StatusOK, map[string]any{"history": entries})
+}
+
+// ProjectHistory godoc  GET /projects/:id/history?limit=15&offset=0
+func (h *Handler) ProjectHistory(w http.ResponseWriter, r *http.Request) {
+	projectID, err := uuid.Parse(chi.URLParam(r, "id"))
+	if err != nil {
+		response.NotFound(w)
+		return
+	}
+
+	limit := 15
+	offset := 0
+	if v := r.URL.Query().Get("limit"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n > 0 && n <= 100 {
+			limit = n
+		}
+	}
+	if v := r.URL.Query().Get("offset"); v != "" {
+		if n, err := strconv.Atoi(v); err == nil && n >= 0 {
+			offset = n
+		}
+	}
+
+	entries, err := h.service.GetProjectHistory(r.Context(), projectID, limit, offset)
+	if err != nil {
+		h.logger.Error("get project history", zap.Error(err),
+			zap.String("project_id", projectID.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
+		response.InternalError(w)
+		return
+	}
+	if entries == nil {
+		entries = []*ProjectHistoryEntry{}
+	}
+	response.JSON(w, http.StatusOK, map[string]any{
+		"history":  entries,
+		"limit":    limit,
+		"offset":   offset,
+		"has_more": len(entries) == limit,
+	})
 }
 
 // Delete godoc  DELETE /tasks/:id
@@ -288,7 +363,11 @@ func (h *Handler) Delete(w http.ResponseWriter, r *http.Request) {
 			response.Forbidden(w)
 			return
 		}
-		h.logger.Error("delete task", zap.Error(err))
+		h.logger.Error("delete task", zap.Error(err),
+			zap.String("task_id", id.String()),
+			zap.String("user_id", claims.UserID.String()),
+			zap.String("request_id", middleware.GetRequestID(r)),
+		)
 		response.InternalError(w)
 		return
 	}

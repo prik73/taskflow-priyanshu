@@ -42,17 +42,36 @@ func Logger(logger *zap.Logger) func(http.Handler) http.Handler {
 
 			next.ServeHTTP(sr, r)
 
-			logger.Info("http_request",
+			// Skip logging SSE streams — they're long-lived and noisy
+			if r.Header.Get("Accept") == "text/event-stream" {
+				return
+			}
+
+			fields := []zap.Field{
 				zap.String("request_id", GetRequestID(r)),
 				zap.String("method", r.Method),
 				zap.String("path", r.URL.Path),
-				zap.String("query", r.URL.RawQuery),
 				zap.Int("status", sr.status),
 				zap.Duration("duration", time.Since(start)),
 				zap.Int("bytes", sr.bytes),
-				zap.String("remote_addr", r.RemoteAddr),
-				zap.String("user_agent", r.UserAgent()),
-			)
+			}
+			// Only include query string when present
+			if q := r.URL.RawQuery; q != "" {
+				fields = append(fields, zap.String("query", q))
+			}
+			// Include user identity when available
+			if claims := GetUserClaims(r); claims != nil {
+				fields = append(fields, zap.String("user_id", claims.UserID.String()))
+			}
+
+			switch {
+			case sr.status >= 500:
+				logger.Error("http_request", fields...)
+			case sr.status >= 400:
+				logger.Warn("http_request", fields...)
+			default:
+				logger.Info("http_request", fields...)
+			}
 		})
 	}
 }
