@@ -70,7 +70,43 @@ docker compose run --rm seed
 
 ---
 
-## 4. Running Migrations
+## 4. Running Without Docker
+
+> **Prerequisites:** Go 1.23+, Node 20+, and a running PostgreSQL instance (or just spin up the DB container).
+
+**Backend**
+
+```bash
+# Start only the database
+docker compose up postgres -d
+
+# In the backend directory
+cd backend
+ENV=development \
+JWT_SECRET=dev-secret \
+DB_HOST=localhost \
+DB_PORT=5432 \
+DB_USER=taskflow \
+DB_PASSWORD=taskflow_password \
+DB_NAME=taskflow \
+DB_SSLMODE=disable \
+PORT=8080 \
+go run ./cmd/server/main.go
+```
+
+**Frontend**
+
+```bash
+cd frontend
+npm install
+npm run dev   # http://localhost:5173
+```
+
+The Vite dev server proxies API calls to `http://localhost:8080` by default via `VITE_API_URL`.
+
+---
+
+## 5. Running Migrations (standalone)
 
 Migrations run **automatically** when the API container starts — nothing to do manually.
 
@@ -87,7 +123,7 @@ migrate \
 
 ---
 
-## 5. Test Credentials
+## 6. Test Credentials
 
 | User | Email | Password |
 |---|---|---|
@@ -98,7 +134,7 @@ Amit ji owns a **Website Redesign** project with three tasks in different status
 
 ---
 
-## 6. API Reference
+## 7. API Reference
 
 **Base URL:** `http://localhost:8080`  
 All protected endpoints require `Authorization: Bearer <access_token>`.
@@ -149,7 +185,7 @@ All protected endpoints require `Authorization: Bearer <access_token>`.
 
 ---
 
-## 7. Integration Tests
+## 8. Integration Tests
 
 Tests live in `backend/integration/` and run against a real PostgreSQL database. They are skipped automatically when `INTEGRATION_DSN` is not set.
 
@@ -169,7 +205,7 @@ go test ./backend/integration/... -v -count=1
 
 ---
 
-## 8. What I'd Do With More Time
+## 9. What I'd Do With More Time
 
 **Security**
 - Rate limiting (token bucket per IP) on auth endpoints
