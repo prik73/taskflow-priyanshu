@@ -624,6 +624,12 @@ body {
   flex-direction: column;
   gap: 0.75rem;
   padding: 1.25rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.project-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
 }
 
 .project-card-header {
