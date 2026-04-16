@@ -648,7 +648,7 @@ body {
 }
 
 .project-card-name:hover {
-  color: var(--primary);
+  color: #ef4444;
 }
 
 .project-card-actions {
