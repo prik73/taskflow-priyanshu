@@ -612,7 +612,104 @@ body {
   color: #22c55e;
 }
 
-/* ── Projects grid ───────────────────────────────────────────────────────────── */
+/* ── Projects hero banner ────────────────────────────────────────────────────── */
+.projects-hero {
+  position: sticky;
+  top: 3.5rem;
+  z-index: 49;
+  background: linear-gradient(135deg, #1e1b4b 0%, #312e81 45%, #4338ca 80%, #6d28d9 100%);
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.projects-hero-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+  position: relative;
+  z-index: 2;
+}
+
+.projects-hero-title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: white;
+  margin: 0;
+  letter-spacing: -0.03em;
+}
+
+.projects-hero-sub {
+  margin: 0.15rem 0 0;
+  color: rgba(199, 210, 254, 0.75);
+  font-size: 0.8rem;
+  min-height: 1em;
+}
+
+.projects-hero-btn {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  padding: 0.4rem 0.9rem;
+  letter-spacing: 0.01em;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.projects-hero-btn:hover {
+  border-color: rgba(255, 255, 255, 0.55);
+  color: white;
+  background: transparent;
+}
+
+.detail-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.detail-hero-breadcrumb {
+  font-size: 0.75rem;
+  color: rgba(199, 210, 254, 0.6);
+  margin: 0 0 0.3rem;
+}
+
+.detail-hero-breadcrumb a {
+  color: rgba(199, 210, 254, 0.7);
+  text-decoration: none;
+}
+
+.detail-hero-breadcrumb a:hover {
+  color: white;
+}
+
+.detail-hero-actions {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.detail-hero-btn--danger {
+  border-color: rgba(248, 113, 113, 0.4);
+  color: rgba(248, 113, 113, 0.85);
+}
+
+.detail-hero-btn--danger:hover {
+  border-color: rgba(248, 113, 113, 0.7);
+  color: #fca5a5;
+}
+
+
+/* Projects grid */
 .projects-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -627,9 +724,10 @@ body {
   transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
+
 .project-card:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
 }
 
 .project-card-header {

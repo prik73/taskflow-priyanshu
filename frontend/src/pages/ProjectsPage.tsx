@@ -2,7 +2,7 @@ import { useState } from 'react';
 import Navbar from '../components/Navbar';
 import ProjectModal from '../components/ProjectModal';
 import ConfirmModal from '../components/ConfirmModal';
-import ProjectCard from '../components/projects/ProjectCard';
+import ProjectCard, { ProjectCardSkeleton } from '../components/projects/ProjectCard';
 import ProjectSearchBar from '../components/projects/ProjectSearchBar';
 import { useProjects } from '../hooks/useProjects';
 import { useAuth } from '../contexts/AuthContext';
@@ -27,17 +27,20 @@ export default function ProjectsPage() {
   return (
     <>
       <Navbar />
-      <main className="page-container">
-        <div className="page-header">
+
+      <div className="projects-hero">
+        <div className="projects-hero-inner">
           <div>
-            <h1 className="page-title">Projects</h1>
-            <p className="page-subtitle" style={{ opacity: loading && !initialLoad ? 0.4 : 1, transition: 'opacity 0.15s' }}>
+            <h1 className="projects-hero-title">Projects</h1>
+            <p className="projects-hero-sub" style={{ opacity: loading && !initialLoad ? 0.4 : 1, transition: 'opacity 0.15s' }}>
               {!initialLoad && `${total} project${total !== 1 ? 's' : ''}`}
             </p>
           </div>
-          <button onClick={openCreate}>+ New Project</button>
+          <button className="projects-hero-btn" onClick={openCreate}>+ New Project</button>
         </div>
+      </div>
 
+      <main className="page-container">
         <ProjectSearchBar value={search} onChange={setSearch} />
 
         {error && (
@@ -48,7 +51,9 @@ export default function ProjectsPage() {
         )}
 
         {loading && initialLoad ? (
-          <div className="spinner-center" aria-busy="true" data-spinner="large" />
+          <div className="projects-grid">
+            {Array.from({ length: 6 }).map((_, i) => <ProjectCardSkeleton key={i} />)}
+          </div>
         ) : projects.length === 0 ? (
           <div className="empty-state">
             {debouncedSearch ? (

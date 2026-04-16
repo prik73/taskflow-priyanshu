@@ -65,6 +65,17 @@ interface ProjectCardProps {
   onDelete: () => void;
 }
 
+export function ProjectCardSkeleton() {
+  return (
+    <article className="card project-card" aria-hidden="true">
+      <div role="status" className="skeleton line" style={{ width: '55%' }} />
+      <div role="status" className="skeleton line" style={{ width: '100%' }} />
+      <div role="status" className="skeleton line" style={{ width: '70%' }} />
+      <div role="status" className="skeleton line" style={{ width: '35%', marginTop: 'auto' }} />
+    </article>
+  );
+}
+
 export default function ProjectCard({ project, isOwner, deleting, onEdit, onDelete }: ProjectCardProps) {
   return (
     <article className="card project-card">

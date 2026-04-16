@@ -63,7 +63,7 @@ export default function LoginPage() {
               it's just a task manager<br />:)
             </h2>
             <p className="auth-hero-sub">
-              Projects, tasks, and your team — all in one place.
+              Projects, tasks, and your team, all in one place.
             </p>
           </div>
           <div className="auth-hero-character">
