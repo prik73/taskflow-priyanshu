@@ -43,7 +43,7 @@ function ProfileDialog({ onClose, onLogout }: { onClose: () => void; onLogout: (
           </div>
           <div className="profile-row">
             <dt>Member since</dt>
-            <dd>{user?.created_at ? formatDate(user.created_at) : '—'}</dd>
+            <dd>{user?.created_at ? formatDate(user.created_at) : '-'}</dd>
           </div>
           <div className="profile-row">
             <dt>User ID</dt>

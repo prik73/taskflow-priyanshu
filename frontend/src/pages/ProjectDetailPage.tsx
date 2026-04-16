@@ -167,20 +167,25 @@ export default function ProjectDetailPage() {
   return (
     <>
       <Navbar />
+
+      <div className="projects-hero">
+        <div className="projects-hero-inner">
+          <div>
+            <h1 className="projects-hero-title">{project?.name}</h1>
+            <p className="projects-hero-sub">
+              {project?.description || 'No description'}
+            </p>
+          </div>
+        </div>
+      </div>
+
       <main className="page-container page-container--wide">
 
-        <p className="breadcrumb">
-          <Link to="/projects">Projects</Link>{' / '}<span>{project?.name}</span>
-        </p>
-
-        <div className="page-header">
-          <div>
-            <h1 className="page-title">{project?.name}</h1>
-            {project?.description
-              ? <p className="page-subtitle">{project.description}</p>
-              : <p className="page-subtitle muted">No description</p>}
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div className="detail-page-header">
+          <p className="breadcrumb" style={{ margin: 0 }}>
+            <Link to="/projects">Projects</Link>{' / '}<span>{project?.name}</span>
+          </p>
+          <div className="detail-hero-actions">
             <StatsDropdown tasks={tasks} />
             <button className="outline small" onClick={() => setShowActivity(true)}>Activity</button>
             {isOwner && (

@@ -49,12 +49,12 @@ function describeEntry(entry: HistoryEntry): React.ReactNode {
     case 'status': {
       const from = STATUS_LABELS[entry.old_value ?? ''] ?? entry.old_value;
       const to = STATUS_LABELS[entry.new_value ?? ''] ?? entry.new_value;
-      return <>moved from {b(from ?? '—')} to {b(to ?? '—')}</>;
+      return <>moved from {b(from ?? '-')} to {b(to ?? '-')}</>;
     }
     case 'priority': {
       const from = PRIORITY_LABELS[entry.old_value ?? ''] ?? entry.old_value;
       const to = PRIORITY_LABELS[entry.new_value ?? ''] ?? entry.new_value;
-      return <>changed priority from {b(from ?? '—')} to {b(to ?? '—')}</>;
+      return <>changed priority from {b(from ?? '-')} to {b(to ?? '-')}</>;
     }
     case 'assignee_id':
       if (!entry.new_value) return <>removed assignee</>;
