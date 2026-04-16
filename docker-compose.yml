@@ -1,13 +1,14 @@
 # TaskFlow — docker-compose.yml
 # Usage:
 #   cp .env.example .env   (edit values if desired)
-#   docker compose up
+#   docker compose up -d
 #
 # Services:
 #   postgres  — PostgreSQL 16
 #   api       — Go REST API (runs migrations on start, then serves on :8080)
 #   seed      — one-shot seeder (exits after inserting demo data)
-#   frontend  — React/Vite SPA served via nginx on :3000
+#   frontend  — React/Vite SPA served via nginx (proxies /api → api:8080)
+#   npm       — Nginx Proxy Manager (admin UI on :81, proxies 80/443)
 
 services:
   # ── Database ────────────────────────────────────────────────────────────────
@@ -20,14 +21,14 @@ services:
       POSTGRES_DB:       ${DB_NAME:-taskflow}
     volumes:
       - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "${DB_PORT_EXPOSE:-5432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-taskflow} -d ${DB_NAME:-taskflow}"]
       interval: 5s
       timeout: 5s
       retries: 10
       start_period: 10s
+    networks:
+      - internal
 
   # ── API Server ───────────────────────────────────────────────────────────────
   api:
@@ -45,11 +46,11 @@ services:
       DB_PASSWORD:  ${DB_PASSWORD:-taskflow_password}
       DB_NAME:      ${DB_NAME:-taskflow}
       DB_SSLMODE:   ${DB_SSLMODE:-disable}
-    ports:
-      - "${PORT:-8080}:8080"
     depends_on:
       postgres:
         condition: service_healthy
+    networks:
+      - internal
 
   # ── Seed (runs once, exits) ──────────────────────────────────────────────────
   seed:
@@ -69,6 +70,8 @@ services:
       api:
         condition: service_started
     restart: "no"
+    networks:
+      - internal
 
   # ── Frontend ─────────────────────────────────────────────────────────────────
   frontend:
@@ -76,12 +79,35 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        VITE_API_URL: ${VITE_API_URL:-http://localhost:8080}
+        VITE_API_URL: /api
     restart: unless-stopped
-    ports:
-      - "${FRONTEND_PORT:-3000}:80"
     depends_on:
       - api
+    networks:
+      - internal
+      - proxy
+
+  # ── Nginx Proxy Manager ──────────────────────────────────────────────────────
+  npm:
+    image: jc21/nginx-proxy-manager:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "81:81"
+    volumes:
+      - npm_data:/data
+      - npm_letsencrypt:/etc/letsencrypt
+    networks:
+      - proxy
 
 volumes:
   postgres_data:
+  npm_data:
+  npm_letsencrypt:
+
+networks:
+  internal:
+    driver: bridge
+  proxy:
+    driver: bridge
