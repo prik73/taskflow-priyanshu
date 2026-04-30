@@ -145,23 +145,25 @@ export default function TaskModal({ projectId, task, onClose, onSaved }: Props) 
           </div>
 
           <div className="form-row">
-            <div data-field={fieldErrors.status ? 'error' : undefined}>
-              <label htmlFor="task-status">
-                Status
-                <div className="status-pill-wrap status-pill-wrap--block" data-status={status}>
-                  <select
-                    id="task-status"
-                    value={status}
-                    onChange={e => setStatus(e.target.value)}
-                  >
-                    {STATUSES.map(s => (
-                      <option key={s.value} value={s.value}>{s.label}</option>
-                    ))}
-                  </select>
-                </div>
-              </label>
-              {fieldErrors.status && <p className="error">{fieldErrors.status}</p>}
-            </div>
+            {isEdit && (
+              <div data-field={fieldErrors.status ? 'error' : undefined}>
+                <label htmlFor="task-status">
+                  Status
+                  <div className="status-pill-wrap status-pill-wrap--block" data-status={status}>
+                    <select
+                      id="task-status"
+                      value={status}
+                      onChange={e => setStatus(e.target.value)}
+                    >
+                      {STATUSES.map(s => (
+                        <option key={s.value} value={s.value}>{s.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                </label>
+                {fieldErrors.status && <p className="error">{fieldErrors.status}</p>}
+              </div>
+            )}
 
             <div data-field={fieldErrors.priority ? 'error' : undefined}>
               <label htmlFor="task-priority">
